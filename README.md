@@ -1,5 +1,10 @@
 # claude-panel
 
+<p align="center">
+  <img src="images/home_state.png" alt="The panel on a Raspberry Pi showing four Claude Code sessions, the open one in orange" width="49%">
+  <img src="images/swap_state.png" alt="Long-press sheet: open on the Mac, unpin, and pick the session's character and color" width="49%">
+</p>
+
 A small touchscreen on your desk that shows every Claude Code session running on your Mac, each with an animated pixel-art character that changes with what the session is doing. Tap a tile and that session opens on the Mac.
 
 > **Not an official Anthropic project.** It is not affiliated with or endorsed by Anthropic. "Claude" is a trademark of Anthropic, PBC.
