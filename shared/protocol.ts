@@ -1,0 +1,57 @@
+/**
+ * Contract between the Mac agent and the panel, over a WebSocket at
+ * ws://<mac>.local:PANEL_PORT/ws?token=<pairing token>. The agent sends a snapshot on
+ * connect, then one message per change. The panel shows sessions that are `live || pinned`.
+ */
+
+export const PANEL_PORT = 7778;
+
+export const SESSION_STATES = [
+  "idle", // started, no prompt yet
+  "working",
+  "needs_permission",
+  "needs_input", // a question, a plan to review, or otherwise waiting on the user
+  "compacting",
+  "done", // finished its turn: the user's move
+  "error",
+  "ended", // process gone
+] as const;
+
+export type SessionState = (typeof SESSION_STATES)[number];
+
+export interface SessionIcon {
+  /** Sprite sheet id. */
+  character: string;
+  /** "#rrggbb" */
+  color: string;
+}
+
+export const DEFAULT_ICON: SessionIcon = { character: "default", color: "#d97757" };
+
+export interface PanelSession {
+  id: string;
+  name: string;
+  cwd: string;
+  state: SessionState;
+  /** Short detail for the tile, e.g. "Bash: npm test". */
+  activity: string | null;
+  /** The Claude process is running. */
+  live: boolean;
+  /** Epoch ms of the last state change. */
+  stateSince: number;
+  pinned: boolean;
+  /** Order among pinned sessions; null when not pinned. */
+  position: number | null;
+  icon: SessionIcon;
+}
+
+export type ServerMessage =
+  | { type: "snapshot"; sessions: PanelSession[] }
+  | { type: "session"; session: PanelSession }
+  | { type: "removed"; id: string }
+  | { type: "error"; message: string };
+
+export type ClientMessage =
+  | { type: "open"; id: string }
+  | { type: "pin"; id: string; pinned: boolean }
+  | { type: "icon"; id: string; icon: SessionIcon }; // pins the session if it isn't yet

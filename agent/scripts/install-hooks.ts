@@ -1,12 +1,10 @@
 /**
- * Phase 1 · Step 5 — Install (or remove) the panel hooks in ~/.claude/settings.json.
+ * Adds the panel hooks to ~/.claude/settings.json, leaving other hooks untouched.
  *
- *   bun run hooks:install              add the hooks (idempotent, backs up first)
- *   bun run hooks:install --dry-run    show the resulting `hooks` block without writing
- *   bun run hooks:install --remove     remove ONLY the panel hooks
- *   bun run hooks:install --print      minimal settings with just the hooks (for `claude --settings`)
- *
- * Keeps whatever you already have: it only touches handlers that point at the panel URL.
+ *   bun run hooks:install              install (idempotent; backs up settings first)
+ *   bun run hooks:install --dry-run    print the resulting hooks block
+ *   bun run hooks:install --remove     remove only the panel hooks
+ *   bun run hooks:install --print      print settings holding only the panel hooks (for `claude --settings`)
  */
 import { copyFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -28,7 +26,7 @@ const file = Bun.file(SETTINGS);
 const exists = await file.exists();
 const settings: Settings = exists ? await file.json() : {};
 
-// 1. Drop any panel hooks already there → reinstalling never duplicates.
+// Strip existing panel hooks first so reinstalling never duplicates them.
 const hooks: Record<string, MatcherGroup[]> = {};
 for (const [event, groups] of Object.entries(settings.hooks ?? {})) {
   const kept = groups
@@ -37,7 +35,6 @@ for (const [event, groups] of Object.entries(settings.hooks ?? {})) {
   if (kept.length > 0) hooks[event] = kept;
 }
 
-// 2. Append the panel hooks after yours (unless --remove).
 if (!args.has("--remove")) {
   for (const [event, groups] of Object.entries(buildPanelHooks())) {
     hooks[event] = [...(hooks[event] ?? []), ...groups];

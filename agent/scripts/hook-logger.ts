@@ -1,29 +1,15 @@
 /**
- * Phase 1 · Step 4 — Listen to Claude Code hook events.
- *
- * The panel hooks POST each event's JSON (the same JSON a command hook gets
- * on stdin) to http://127.0.0.1:7777/hook. This server:
- *   1. prints one line per event,
- *   2. saves it to logs/hooks.jsonl (real data for the Phase 2 tests),
- *   3. replies 204 with no body = "success, no opinion" (never blocks Claude).
- *
- *   bun run hooks:log
- *
- * Heads-up: logs/hooks.jsonl contains your prompts and replies. It is in .gitignore.
+ * Stand-in for the agent that prints raw hook events and appends them to
+ * logs/hooks.jsonl. That file contains your prompts and replies; it is gitignored.
+ * It listens on the agent's port, so run one or the other.
  */
 import { appendFile, mkdir } from "node:fs/promises";
+import { HOOK_PORT } from "../src/config.ts";
+import type { HookEvent } from "../src/state.ts";
 
-const PORT = Number(process.env.PORT ?? 7777);
 const LOG_DIR = new URL("../logs/", import.meta.url).pathname;
 const LOG_FILE = `${LOG_DIR}hooks.jsonl`;
 await mkdir(LOG_DIR, { recursive: true });
-
-interface HookEvent {
-  hook_event_name: string;
-  session_id: string;
-  cwd: string;
-  [field: string]: unknown;
-}
 
 const RESET = "\x1b[0m";
 const DIM = "\x1b[2m";
@@ -45,7 +31,6 @@ const COLOR: Record<string, string> = {
 
 const oneLine = (value: unknown, max = 70) => String(value ?? "").replace(/\s+/g, " ").slice(0, max);
 
-/** The most interesting bit of each event type, on one line. */
 function detail(e: HookEvent): string {
   switch (e.hook_event_name) {
     case "SessionStart":
@@ -75,8 +60,8 @@ function detail(e: HookEvent): string {
 }
 
 Bun.serve({
-  hostname: "127.0.0.1", // reachable only from this Mac, never from the network
-  port: PORT,
+  hostname: "127.0.0.1",
+  port: HOOK_PORT,
   async fetch(req) {
     const { pathname } = new URL(req.url);
     if (req.method !== "POST" || pathname !== "/hook") return new Response("not found", { status: 404 });
@@ -98,4 +83,4 @@ Bun.serve({
   },
 });
 
-console.log(`Listening for hooks on http://127.0.0.1:${PORT}/hook → ${LOG_FILE}`);
+console.log(`Listening for hooks on http://127.0.0.1:${HOOK_PORT}/hook → ${LOG_FILE}`);

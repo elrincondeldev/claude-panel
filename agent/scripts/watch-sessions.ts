@@ -1,37 +1,14 @@
-/**
- * Phase 1 · Step 3 — Watch live Claude Code sessions.
- *
- * Runs `claude agents --json` (the documented way to read sessions from outside)
- * every INTERVAL_MS, prints a table and records status transitions.
- *
- *   bun run watch:sessions          (Ctrl+C to quit)
- *   INTERVAL_MS=1000 bun run watch:sessions
- *
- * What to look for: status goes busy → idle (and waiting when it needs something from you).
- */
+/** Prints `claude agents --json` every 2 s with a log of status transitions. */
 import { $ } from "bun";
+import type { AgentEntry } from "../src/state.ts";
 
-interface AgentEntry {
-  sessionId: string;
-  name?: string;
-  cwd: string;
-  kind: "interactive" | "background";
-  pid?: number;
-  status?: "busy" | "waiting" | "idle";
-  startedAt: number;
-}
-
-const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? 2000);
+const INTERVAL_MS = 2000;
 const MAX_HISTORY = 15;
 
 const RESET = "\x1b[0m";
 const DIM = "\x1b[2m";
-const COLOR: Record<string, string> = {
-  busy: "\x1b[33m", // yellow
-  waiting: "\x1b[35m", // magenta
-  idle: "\x1b[32m", // green
-  gone: "\x1b[90m", // grey
-};
+const CLEAR_SCREEN = "\x1b[2J\x1b[H";
+const COLOR: Record<string, string> = { busy: "\x1b[33m", waiting: "\x1b[35m", idle: "\x1b[32m", gone: "\x1b[90m" };
 
 const lastStatus = new Map<string, string>();
 const history: string[] = [];
@@ -53,7 +30,6 @@ async function listSessions(): Promise<AgentEntry[]> {
   return sessions.sort((a, b) => a.startedAt - b.startedAt);
 }
 
-/** Compare with the previous round and record the changes. */
 function recordTransitions(sessions: AgentEntry[]) {
   const seen = new Set<string>();
   for (const s of sessions) {
@@ -85,7 +61,7 @@ function render(sessions: AgentEntry[]) {
     );
   }
   lines.push("", "Transitions:", ...history);
-  process.stdout.write("\x1b[2J\x1b[H" + lines.join("\n") + "\n"); // clear screen and redraw
+  process.stdout.write(CLEAR_SCREEN + lines.join("\n") + "\n");
 }
 
 while (true) {
