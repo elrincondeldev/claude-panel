@@ -1,0 +1,16 @@
+{
+  "name": "claude-panel-agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "watch:sessions": "bun scripts/watch-sessions.ts",
+    "hooks:log": "bun scripts/hook-logger.ts",
+    "hooks:install": "bun scripts/install-hooks.ts",
+    "open": "bun scripts/open-session.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.4.4",
+    "typescript": "^7.0.2"
+  }
+}
