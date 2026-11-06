@@ -2,11 +2,19 @@
  * Per-user data in ~/Library/Application Support/claude-panel: config.json holds the
  * pairing token (created on first run, mode 600) and panel.db the SQLite store.
  */
+import { $ } from "bun";
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
+import { PANEL_PORT } from "../../shared/protocol.ts";
 
 export const HOOK_PORT = 7777;
+
+/** WebSocket URL other devices on the LAN use to reach this Mac (Bonjour name). */
+export async function panelUrl(): Promise<string> {
+  const host = (await $`scutil --get LocalHostName`.quiet().nothrow().text()).trim();
+  return `ws://${host ? `${host}.local` : "localhost"}:${PANEL_PORT}/ws`;
+}
 
 export interface Config {
   dataDir: string;

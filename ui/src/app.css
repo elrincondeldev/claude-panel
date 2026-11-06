@@ -1,0 +1,45 @@
+:root {
+  --bg: #050506;
+  --tile: #101115;
+  --line: #2b2d35;
+  --accent: #ff6b1a;
+  --accent-dim: #6e3514;
+  --text: #f4f4f5;
+  --muted: #8b909a;
+  --danger: #ff4d4d;
+  --font: "VT323", ui-monospace, monospace;
+  --font-label: "Silkscreen", ui-monospace, monospace;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+}
+
+body {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  font-family: var(--font);
+  color: var(--text);
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}

@@ -12,7 +12,8 @@
     "watch:sessions": "bun scripts/watch-sessions.ts",
     "hooks:log": "bun scripts/hook-logger.ts",
     "hooks:install": "bun scripts/install-hooks.ts",
-    "open": "bun scripts/open-session.ts"
+    "open": "bun scripts/open-session.ts",
+    "pairing": "bun scripts/pairing.ts"
   },
   "devDependencies": {
     "@types/bun": "^1.4.4",

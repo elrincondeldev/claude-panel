@@ -1,6 +1,5 @@
-import { $ } from "bun";
 import { PANEL_PORT } from "../../shared/protocol.ts";
-import { HOOK_PORT, loadConfig } from "./config.ts";
+import { HOOK_PORT, loadConfig, panelUrl } from "./config.ts";
 import { SessionHub } from "./hub.ts";
 import { startPoller } from "./poller.ts";
 import { startServers } from "./server.ts";
@@ -21,10 +20,9 @@ hub.subscribe((change) => {
   console.log(`${time}  ${s.id.slice(0, 8)}  ${s.state.padEnd(16)} ${s.name}${flags}  ${s.activity ?? ""}`);
 });
 
-const host = (await $`scutil --get LocalHostName`.quiet().nothrow().text()).trim() || "localhost";
 console.log(`claude-panel agent
   hooks : http://127.0.0.1:${HOOK_PORT}/hook
-  panel : ws://${host}.local:${PANEL_PORT}/ws?token=…   (token in ${config.dataDir}/config.json)
+  panel : ${await panelUrl()}   (pair with: bun run pairing)
   data  : ${config.dbPath}
 `);
 
