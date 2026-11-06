@@ -36,6 +36,7 @@
         {#each pages[current]!.sessions as session (session.id)}
           <Tile
             {session}
+            focused={session.id === link.focusedId}
             onopen={() => link!.send({ type: "open", id: session.id })}
             onmenu={() => (menuFor = session.id)}
           />
@@ -75,6 +76,7 @@
     flex-direction: column;
     width: 480px;
     height: 320px;
+    padding: var(--inset);
     overflow: hidden;
     background: var(--bg);
   }

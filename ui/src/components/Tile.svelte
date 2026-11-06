@@ -4,7 +4,12 @@
   import { moodOf, statusLine } from "../lib/panel.ts";
   import Sprite from "./Sprite.svelte";
 
-  let { session, onopen, onmenu }: { session: PanelSession; onopen: () => void; onmenu: () => void } = $props();
+  let {
+    session,
+    focused,
+    onopen,
+    onmenu,
+  }: { session: PanelSession; focused: boolean; onopen: () => void; onmenu: () => void } = $props();
 
   const LONG_PRESS_MS = 550;
   // Resistive touchscreens jitter; small movements still count as a press.
@@ -44,6 +49,7 @@
 <button
   class="tile {session.state}"
   class:pressed
+  class:focused
   class:ended={!session.live}
   onpointerdown={down}
   onpointerup={up}
@@ -140,6 +146,31 @@
   }
   .ended :global(canvas) {
     filter: grayscale(1);
+  }
+
+  .focused {
+    background: var(--accent);
+    color: #000;
+  }
+  .focused .status {
+    color: #000;
+  }
+  /* Most sprites are orange too: outline them so they stay visible on the orange tile. */
+  .focused :global(canvas) {
+    filter: drop-shadow(2px 0 0 #000) drop-shadow(-2px 0 0 #000) drop-shadow(0 2px 0 #000) drop-shadow(0 -2px 0 #000);
+  }
+  /* The usual blink goes to orange, which a focused tile already is: blink to dark instead. */
+  .focused.needs_permission {
+    animation-name: blink-dark;
+  }
+  @keyframes blink-dark {
+    50% {
+      background: var(--tile);
+      color: var(--text);
+    }
+  }
+  .focused.pressed {
+    filter: brightness(0.8);
   }
 
   .pressed {

@@ -6,3 +6,5 @@ logs/
 docs/
 dist/
 ui/public/config.json
+pi/.cache/
+pi/out/

@@ -20,6 +20,16 @@ const DOMAIN = `gui/${process.getuid!()}`;
 // launchd starts processes with a bare PATH; the agent needs `claude`.
 const PATH = [`${HOME}/.local/bin`, `${HOME}/.bun/bin`, "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"].join(":");
 
+/** bootout returns before the job is gone; bootstrapping before that fails with "Input/output error". */
+async function unload() {
+  await $`launchctl bootout ${DOMAIN}/${LABEL}`.quiet().nothrow();
+  for (let i = 0; i < 50; i++) {
+    if ((await $`launchctl print ${DOMAIN}/${LABEL}`.quiet().nothrow()).exitCode !== 0) return;
+    await Bun.sleep(100);
+  }
+  throw new Error(`${LABEL} did not unload`);
+}
+
 const xml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 function plist() {
@@ -49,13 +59,13 @@ switch (process.argv[2]) {
   case "install": {
     await mkdir(dirname(LOG), { recursive: true });
     await Bun.write(PLIST, plist());
-    await $`launchctl bootout ${DOMAIN}/${LABEL}`.quiet().nothrow(); // drop a previously loaded copy
+    await unload();
     await $`launchctl bootstrap ${DOMAIN} ${PLIST}`;
     console.log(`Installed and started ${LABEL}\n  plist: ${PLIST}\n  log:   ${LOG}`);
     break;
   }
   case "uninstall": {
-    await $`launchctl bootout ${DOMAIN}/${LABEL}`.quiet().nothrow();
+    await unload();
     await rm(PLIST, { force: true });
     console.log(`Stopped and removed ${LABEL}`);
     break;

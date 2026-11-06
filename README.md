@@ -18,3 +18,17 @@ bun run dev               # open http://localhost:5173
 ```
 
 Tests: `bun test` in `agent/` and `ui/`; `bun run check` type-checks the UI.
+
+## Raspberry Pi
+
+```bash
+bun pi/build-image.ts     # asks for the WiFi; writes pi/out/claude-panel.img
+```
+
+Flash it with Raspberry Pi Imager ("Use custom", no OS customisation) and power the Pi on. The first boot installs the kiosk and reboots into the panel (a few minutes). Then `ssh panel@claude-panel.local`; the setup log is `/var/log/claude-panel-setup.log`.
+
+```bash
+bun pi/deploy.ts          # push UI and kiosk changes to the running Pi (no reflash, no reboot)
+```
+
+The tile of the session in front in the Claude desktop app is shown in solid orange; the agent learns it from the app's log.

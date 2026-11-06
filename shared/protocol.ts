@@ -53,9 +53,10 @@ export interface PanelSession {
 }
 
 export type ServerMessage =
-  | { type: "snapshot"; sessions: PanelSession[] }
+  | { type: "snapshot"; sessions: PanelSession[]; focusedId: string | null }
   | { type: "session"; session: PanelSession }
   | { type: "removed"; id: string }
+  | { type: "focus"; id: string | null } // the session in front in the desktop app; null when none
   | { type: "error"; message: string };
 
 export type ClientMessage =

@@ -7,7 +7,10 @@ import { DEFAULT_ICON, type PanelSession, type SessionIcon } from "../../shared/
 import { applyHookEvent, reconcile, type AgentEntry, type HookEvent, type SessionRecord } from "./state.ts";
 import type { Pin, Store } from "./store.ts";
 
-export type HubChange = { type: "session"; session: PanelSession } | { type: "removed"; id: string };
+export type HubChange =
+  | { type: "session"; session: PanelSession }
+  | { type: "removed"; id: string }
+  | { type: "focus"; id: string | null };
 export type HubListener = (change: HubChange) => void;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,6 +20,8 @@ export class SessionHub {
   private records = new Map<string, SessionRecord>();
   private pins: Map<string, Pin>;
   private listeners = new Set<HubListener>();
+  /** Session in front in the desktop app; not persisted. */
+  focusedId: string | null = null;
 
   constructor(
     private store: Store,
@@ -72,6 +77,12 @@ export class SessionHub {
     this.pins = this.store.loadPins();
     this.emit({ type: "session", session: this.toPanel(rec) });
     return true;
+  }
+
+  setFocused(id: string | null) {
+    if (id === this.focusedId) return;
+    this.focusedId = id;
+    this.emit({ type: "focus", id });
   }
 
   /** Forgets ended, unpinned sessions whose state is older than `maxAgeMs`. */

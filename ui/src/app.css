@@ -9,7 +9,13 @@
   --danger: #ff4d4d;
   --font: "VT323", ui-monospace, monospace;
   --font-label: "Silkscreen", ui-monospace, monospace;
+  --inset: 0px;
   color-scheme: dark;
+}
+
+.kiosk,
+.kiosk * {
+  cursor: none !important;
 }
 
 * {

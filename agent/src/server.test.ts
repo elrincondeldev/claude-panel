@@ -76,7 +76,7 @@ test("the network-facing port does not accept hook events", async () => {
 
 test("the panel gets a snapshot, then live updates from hooks", async () => {
   const { ws, next } = await connect();
-  expect(await next()).toEqual({ type: "snapshot", sessions: [] });
+  expect(await next()).toEqual({ type: "snapshot", sessions: [], focusedId: null });
 
   const res = await postHook({ hook_event_name: "UserPromptSubmit", session_id: ID, cwd: "/tmp/demo" });
   expect(res.status).toBe(204);
@@ -101,6 +101,7 @@ test("pin, icon and open commands; anything else is refused", async () => {
   ws.send(JSON.stringify({ type: "open", id: ID }));
   await waitFor(() => opened.length === 1);
   expect(opened).toEqual([ID]);
+  expect(await next()).toEqual({ type: "focus", id: ID });
 
   ws.send(JSON.stringify({ type: "open", id: "11111111-1111-1111-1111-111111111111" }));
   expect(await next()).toEqual({ type: "error", message: "unknown session" });

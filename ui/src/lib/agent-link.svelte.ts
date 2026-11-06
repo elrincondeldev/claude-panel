@@ -20,6 +20,8 @@ export async function loadPanelConfig(): Promise<PanelConfig> {
  */
 export class AgentLink {
   readonly sessions = new SvelteMap<string, PanelSession>();
+  /** Session in front in the desktop app. */
+  focusedId = $state<string | null>(null);
   status = $state<LinkStatus>("connecting");
   /** Latest error from the agent or from sending; clears itself after a few seconds. */
   error = $state<string | null>(null);
@@ -35,13 +37,14 @@ export class AgentLink {
   }
 
   /**
-   * Pin and icon changes apply locally right away; the agent's echo then confirms them.
+   * Open, pin and icon changes apply locally right away; the agent's echo then confirms them.
    * Without this, a second quick tap would build on the stale icon and undo the first.
    */
   send(message: ClientMessage) {
     if (this.#ws?.readyState !== WebSocket.OPEN) return this.#showError("Not connected to the Mac");
     this.#ws.send(JSON.stringify(message));
 
+    if (message.type === "open") this.focusedId = message.id;
     const session = this.sessions.get(message.id);
     if (!session) return;
     if (message.type === "pin") this.sessions.set(session.id, { ...session, pinned: message.pinned });
@@ -68,6 +71,10 @@ export class AgentLink {
       case "snapshot":
         this.sessions.clear();
         for (const s of msg.sessions) this.sessions.set(s.id, s);
+        this.focusedId = msg.focusedId;
+        break;
+      case "focus":
+        this.focusedId = msg.id;
         break;
       case "session":
         this.sessions.set(msg.session.id, msg.session);

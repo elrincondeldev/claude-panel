@@ -77,6 +77,7 @@
     inset: 0;
     display: grid;
     place-items: center;
+    padding: var(--inset);
     background: rgb(0 0 0 / 0.75);
   }
 
@@ -84,7 +85,8 @@
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 452px;
+    width: calc(100% - 16px);
+    max-width: 452px;
     padding: 10px 12px 12px;
     background: var(--tile);
     border: 1px solid var(--accent);

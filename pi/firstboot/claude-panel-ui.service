@@ -1,0 +1,11 @@
+[Unit]
+Description=claude-panel UI files on 127.0.0.1:8080
+After=network.target
+
+[Service]
+User=panel
+ExecStart=/usr/bin/python3 -m http.server 8080 --bind 127.0.0.1 --directory /opt/claude-panel/ui
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

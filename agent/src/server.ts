@@ -54,7 +54,7 @@ export function startServers({ hub, token, hookPort, panelPort, panelHost = "0.0
       maxPayloadLength: 4 * 1024,
       open(ws) {
         ws.subscribe(TOPIC);
-        send(ws, { type: "snapshot", sessions: hub.snapshot() });
+        send(ws, { type: "snapshot", sessions: hub.snapshot(), focusedId: hub.focusedId });
       },
       async message(ws, raw) {
         const msg = parseClientMessage(String(raw));
@@ -64,7 +64,9 @@ export function startServers({ hub, token, hookPort, panelPort, panelHost = "0.0
         switch (msg.type) {
           case "open": {
             const result = await open(msg.id);
-            if (!result.ok) send(ws, { type: "error", message: result.error });
+            // The desktop log confirms focus a moment later; show it right away.
+            if (result.ok) hub.setFocused(msg.id);
+            else send(ws, { type: "error", message: result.error });
             break;
           }
           case "pin":

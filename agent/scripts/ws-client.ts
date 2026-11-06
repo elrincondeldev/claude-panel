@@ -42,6 +42,9 @@ ws.onmessage = (e) => {
       sessions.delete(msg.id);
       console.log("▸ removed", msg.id.slice(0, 8));
       break;
+    case "focus":
+      console.log("▸ focus", msg.id ? (sessions.get(msg.id)?.name ?? msg.id) : "none");
+      break;
     case "error":
       console.log("✗", msg.message);
       break;

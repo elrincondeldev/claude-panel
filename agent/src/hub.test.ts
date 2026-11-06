@@ -70,6 +70,17 @@ describe("SessionHub", () => {
     expect(hub.get(A)).toMatchObject({ pinned: true, position: 0, icon: { character: "ghost" } });
   });
 
+  test("focus is announced once per change", () => {
+    const { hub, changes } = setup();
+    hub.setFocused(A);
+    hub.setFocused(A);
+    hub.setFocused(null);
+    expect(changes).toEqual([
+      { type: "focus", id: A },
+      { type: "focus", id: null },
+    ]);
+  });
+
   test("unknown sessions cannot be pinned or given an icon", () => {
     const { hub } = setup();
     expect(hub.setPinned(A, true)).toBe(false);
