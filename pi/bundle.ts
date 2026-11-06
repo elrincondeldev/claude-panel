@@ -1,7 +1,7 @@
 import { $ } from "bun";
 import { cp, mkdir } from "node:fs/promises";
 import { dirname } from "node:path";
-import { loadConfig, panelUrl } from "../agent/src/config.ts";
+import { loadConfig, panelUrls } from "../agent/src/config.ts";
 import type { PanelConfig } from "../shared/protocol.ts";
 
 const ROOT = dirname(import.meta.dir);
@@ -13,6 +13,6 @@ export async function writeBundle(dir: string) {
   await cp(`${ROOT}/pi/firstboot`, dir, { recursive: true });
   await cp(`${ROOT}/ui/dist`, `${dir}/ui`, { recursive: true });
   const { token } = await loadConfig();
-  const config: PanelConfig = { agentUrl: await panelUrl(), token };
+  const config: PanelConfig = { agentUrls: await panelUrls(), token };
   await Bun.write(`${dir}/ui/config.json`, JSON.stringify(config, null, 2) + "\n");
 }

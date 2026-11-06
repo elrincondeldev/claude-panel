@@ -9,7 +9,8 @@ BUNDLE=$(dirname "$(readlink -f "$0")")
 APP=/opt/claude-panel
 CONFIG=/boot/firmware/config.txt
 CMDLINE=/boot/firmware/cmdline.txt
-# Measured on the CUQI 3.5" (SPI variant) in landscape; its raw X axis runs right to left.
+TOUCH_RULE=/etc/udev/rules.d/99-claude-panel-touch.rules
+# Default for the CUQI 3.5" (SPI variant) in landscape, whose raw X axis runs right to left.
 TOUCH_MATRIX="-1.14824 -0.00746 1.07864 0.00852 1.20110 -0.11929"
 export DEBIAN_FRONTEND=noninteractive
 
@@ -18,10 +19,11 @@ install_app() {
   install -d "$APP"
   rm -rf "$APP/ui"
   cp -r "$BUNDLE/ui" "$APP/ui"
-  install -m 755 "$BUNDLE/kiosk.sh" "$BUNDLE/session.sh" "$APP/"
+  install -m 755 "$BUNDLE/kiosk.sh" "$BUNDLE/session.sh" "$BUNDLE/touch-capture.sh" "$APP/"
   install -m 644 "$BUNDLE"/claude-panel-*.service /etc/systemd/system/
-  echo "ATTRS{name}==\"ADS7846 Touchscreen\", ENV{LIBINPUT_CALIBRATION_MATRIX}=\"$TOUCH_MATRIX\"" \
-    >/etc/udev/rules.d/99-claude-panel-touch.rules
+  # Keep a calibration made with pi/calibrate.ts.
+  [ -f "$TOUCH_RULE" ] ||
+    echo "ATTRS{name}==\"ADS7846 Touchscreen\", ENV{LIBINPUT_CALIBRATION_MATRIX}=\"$TOUCH_MATRIX\"" >"$TOUCH_RULE"
   udevadm control --reload
   udevadm trigger --subsystem-match=input --action=change
   systemctl daemon-reload
@@ -45,9 +47,16 @@ echo "== packages"
 apt() { apt-get -o DPkg::Lock::Timeout=300 "$@"; }
 apt update || { sleep 30; apt update; }
 # Raspberry Pi OS renamed chromium-browser to chromium; accept either.
-apt install -y cage wlr-randr chromium || apt install -y cage wlr-randr chromium-browser
+apt install -y cage wlr-randr evtest chromium || apt install -y cage wlr-randr evtest chromium-browser
 
 install_app
+
+echo "== removing the WiFi password from the boot partition"
+# cloud-init only reads network-config on the first boot. After that the file just exposes the
+# password on the FAT partition, readable by any user and by anyone holding the card.
+# NetworkManager keeps its own root-only copy.
+printf '# Applied by cloud-init on first boot; the WiFi password was removed afterwards.\n' \
+  >/boot/firmware/network-config
 
 echo "== display"
 # The CUQI 3.5" is sold in an SPI and an HDMI variant; the HDMI one shows up as a connected monitor.

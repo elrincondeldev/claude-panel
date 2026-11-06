@@ -1,0 +1,13 @@
+{
+  "name": "claude-panel",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "setup": "bun scripts/setup.ts",
+    "image": "bun pi/build-image.ts",
+    "deploy": "bun pi/deploy.ts",
+    "calibrate": "bun pi/calibrate.ts",
+    "test": "bun test"
+  }
+}

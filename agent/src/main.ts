@@ -1,5 +1,5 @@
 import { PANEL_PORT } from "../../shared/protocol.ts";
-import { HOOK_PORT, loadConfig, panelUrl } from "./config.ts";
+import { HOOK_PORT, loadConfig, panelUrls } from "./config.ts";
 import { watchDesktopFocus } from "./desktop-focus.ts";
 import { SessionHub } from "./hub.ts";
 import { startPoller } from "./poller.ts";
@@ -25,7 +25,7 @@ hub.subscribe((change) => {
 
 console.log(`claude-panel agent
   hooks : http://127.0.0.1:${HOOK_PORT}/hook
-  panel : ${await panelUrl()}   (pair with: bun run pairing)
+  panel : ${(await panelUrls()).join("  ")}
   data  : ${config.dbPath}
 `);
 

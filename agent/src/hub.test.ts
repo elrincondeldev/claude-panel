@@ -11,7 +11,7 @@ const B = "34446bd8-9f71-4831-9f0b-d6094803dee2";
 const ev = (session_id: string, hook_event_name: string, extra: Record<string, unknown> = {}): HookEvent => ({
   session_id,
   hook_event_name,
-  cwd: "/Users/jr/claude-panel",
+  cwd: "/Users/dev/claude-panel",
   ...extra,
 });
 
@@ -29,7 +29,7 @@ describe("SessionHub", () => {
     hub.handleHook(ev(A, "UserPromptSubmit"));
     expect(hub.get(A)).toMatchObject({ name: "claude-panel", state: "working", live: true, pinned: false });
 
-    hub.handleAgents([{ sessionId: A, name: "Claude panel", cwd: "/Users/jr/claude-panel", status: "busy", startedAt: 0 }]);
+    hub.handleAgents([{ sessionId: A, name: "Claude panel", cwd: "/Users/dev/claude-panel", status: "busy", startedAt: 0 }]);
     expect(hub.get(A)!.name).toBe("Claude panel");
   });
 

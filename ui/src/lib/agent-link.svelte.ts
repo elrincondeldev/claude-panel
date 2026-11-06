@@ -5,6 +5,8 @@ export type LinkStatus = "connecting" | "online" | "offline";
 
 const RETRY_MIN_MS = 1000;
 const RETRY_MAX_MS = 10_000;
+// An address that never answers (wrong network, stale IP) would otherwise hang for minutes.
+const CONNECT_TIMEOUT_MS = 5000;
 const ERROR_VISIBLE_MS = 4000;
 
 export async function loadPanelConfig(): Promise<PanelConfig> {
@@ -15,8 +17,8 @@ export async function loadPanelConfig(): Promise<PanelConfig> {
 
 /**
  * Reactive mirror of the agent's sessions over a WebSocket that reconnects forever
- * with backoff (the Mac sleeps, the agent restarts). While offline the last known
- * sessions stay visible.
+ * with backoff (the Mac sleeps, the agent restarts), cycling through the agent's
+ * addresses until one connects. While offline the last known sessions stay visible.
  */
 export class AgentLink {
   readonly sessions = new SvelteMap<string, PanelSession>();
@@ -28,6 +30,7 @@ export class AgentLink {
 
   #config: PanelConfig;
   #ws: WebSocket | null = null;
+  #urlIndex = 0;
   #retryMs = RETRY_MIN_MS;
   #errorTimer: ReturnType<typeof setTimeout> | undefined;
 
@@ -52,15 +55,23 @@ export class AgentLink {
   }
 
   #connect() {
-    const ws = new WebSocket(`${this.#config.agentUrl}?token=${encodeURIComponent(this.#config.token)}`);
+    const urls = this.#config.agentUrls;
+    const ws = new WebSocket(`${urls[this.#urlIndex % urls.length]}?token=${encodeURIComponent(this.#config.token)}`);
     this.#ws = ws;
+    let opened = false;
+    const giveUp = setTimeout(() => ws.close(), CONNECT_TIMEOUT_MS);
+
     ws.onopen = () => {
+      opened = true;
+      clearTimeout(giveUp);
       this.status = "online";
       this.#retryMs = RETRY_MIN_MS;
     };
     ws.onmessage = (e) => this.#receive(JSON.parse(String(e.data)) as ServerMessage);
     ws.onclose = () => {
+      clearTimeout(giveUp);
       this.status = "offline";
+      if (!opened) this.#urlIndex = (this.#urlIndex + 1) % urls.length;
       setTimeout(() => this.#connect(), this.#retryMs);
       this.#retryMs = Math.min(this.#retryMs * 2, RETRY_MAX_MS);
     };

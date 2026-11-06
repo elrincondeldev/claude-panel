@@ -5,15 +5,24 @@
 import { $ } from "bun";
 import { randomBytes } from "node:crypto";
 import { chmod, mkdir } from "node:fs/promises";
-import { homedir } from "node:os";
+import { homedir, networkInterfaces } from "node:os";
 import { PANEL_PORT } from "../../shared/protocol.ts";
 
 export const HOOK_PORT = 7777;
 
-/** WebSocket URL other devices on the LAN use to reach this Mac (Bonjour name). */
-export async function panelUrl(): Promise<string> {
+/**
+ * WebSocket URLs other devices on the LAN can use to reach this Mac: its IPv4 addresses
+ * (Wi-Fi/Ethernet first), then its Bonjour name. IPs come first because some routers drop
+ * mDNS between WiFi clients; the name still works if the Mac's IP changes later.
+ */
+export async function panelUrls(): Promise<string[]> {
+  const ips = Object.entries(networkInterfaces())
+    .sort(([a], [b]) => Number(b.startsWith("en")) - Number(a.startsWith("en")))
+    .flatMap(([, addresses]) => addresses ?? [])
+    .filter((a) => a.family === "IPv4" && !a.internal)
+    .map((a) => a.address);
   const host = (await $`scutil --get LocalHostName`.quiet().nothrow().text()).trim();
-  return `ws://${host ? `${host}.local` : "localhost"}:${PANEL_PORT}/ws`;
+  return [...ips, ...(host ? [`${host}.local`] : [])].map((address) => `ws://${address}:${PANEL_PORT}/ws`);
 }
 
 export interface Config {

@@ -3,12 +3,13 @@
  * On first boot cloud-init joins the WiFi, creates user `panel` with your SSH key and runs
  * firstboot/setup.sh, which installs the kiosk and reboots into it.
  *
- *   bun pi/build-image.ts      (asks for the WiFi name and password)
+ *   bun pi/build-image.ts      (asks for the WiFi, time zone and country)
  *
  * Flash the result with Raspberry Pi Imager → "Use custom" and skip OS customisation:
  * Imager's settings would replace the ones written here.
  */
 import { $ } from "bun";
+import { readlinkSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import { homedir } from "node:os";
 import { basename, dirname } from "node:path";
@@ -16,14 +17,15 @@ import { writeBundle } from "./bundle.ts";
 
 const IMAGE_URL = "https://downloads.raspberrypi.com/raspios_lite_arm64_latest";
 const HOSTNAME = "claude-panel";
-const TIMEZONE = "Europe/Madrid";
-const WIFI_COUNTRY = "ES";
 
 const ROOT = dirname(import.meta.dir);
 const CACHE = `${ROOT}/pi/.cache`;
 const OUT = `${ROOT}/pi/out/claude-panel.img`;
 
 const wifi = await askWifi();
+const timezone = ask("Time zone", macTimezone());
+// The WiFi regulatory domain decides which channels and power levels the Pi may use.
+const country = ask("WiFi country code", await macCountry()).toUpperCase();
 const sshKey = await publicKey();
 const compressed = await downloadImage();
 
@@ -33,8 +35,8 @@ await $`xz -dc ${compressed} > ${OUT}`;
 
 const { device, bootfs } = await attach(OUT);
 try {
-  await Bun.write(`${bootfs}/user-data`, userData(sshKey));
-  await Bun.write(`${bootfs}/network-config`, networkConfig(wifi));
+  await Bun.write(`${bootfs}/user-data`, userData(sshKey, timezone));
+  await Bun.write(`${bootfs}/network-config`, networkConfig(wifi, country));
   await writeBundle(`${bootfs}/claude-panel`);
   await $`dot_clean -m ${bootfs}`.quiet().nothrow(); // drop macOS ._ files from the FAT partition
 } finally {
@@ -46,6 +48,23 @@ Ready: ${OUT}
 1. Raspberry Pi Imager → Choose OS → "Use custom" → this file. Say NO to OS customisation.
 2. Put the card in the Pi and power it on. The first boot takes about 15 minutes and reboots once.
 3. SSH: ssh panel@${HOSTNAME}.local   ·   setup log: /var/log/claude-panel-setup.log`);
+
+function ask(question: string, fallback: string): string {
+  return prompt(`${question} [${fallback}]:`)?.trim() || fallback;
+}
+
+function macTimezone(): string {
+  try {
+    return readlinkSync("/etc/localtime").split("zoneinfo/")[1] ?? "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
+async function macCountry(): Promise<string> {
+  const locale = await $`defaults read -g AppleLocale`.quiet().nothrow().text();
+  return locale.match(/_([A-Z]{2})/)?.[1] ?? "US";
+}
 
 async function askWifi() {
   const ssid = prompt("WiFi name (SSID):")?.trim();
@@ -98,11 +117,11 @@ async function attach(image: string) {
 }
 
 // JSON strings are valid YAML scalars, so any key, SSID or password embeds safely.
-function userData(sshKey: string) {
+function userData(sshKey: string, timezone: string) {
   return `#cloud-config
 hostname: ${HOSTNAME}
 manage_etc_hosts: true
-timezone: ${TIMEZONE}
+timezone: ${JSON.stringify(timezone)}
 users:
   - name: panel
     groups: users,adm,sudo,netdev,video,render,input,gpio,spi
@@ -118,14 +137,14 @@ runcmd:
 `;
 }
 
-function networkConfig({ ssid, password }: { ssid: string; password: string }) {
+function networkConfig({ ssid, password }: { ssid: string; password: string }, country: string) {
   return `network:
   version: 2
   wifis:
     renderer: NetworkManager
     wlan0:
       dhcp4: true
-      regulatory-domain: "${WIFI_COUNTRY}"
+      regulatory-domain: ${JSON.stringify(country)}
       access-points:
         ${JSON.stringify(ssid)}:
           password: ${JSON.stringify(password)}

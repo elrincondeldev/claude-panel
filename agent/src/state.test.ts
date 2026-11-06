@@ -10,7 +10,7 @@ import {
 } from "./state.ts";
 
 const ID = "0603472f-b7c5-4dae-b7a1-142468264b30";
-const CWD = "/Users/jr/claude-panel";
+const CWD = "/Users/dev/claude-panel";
 const T0 = 1_000_000;
 
 const ev = (hook_event_name: string, extra: Record<string, unknown> = {}): HookEvent => ({
@@ -115,7 +115,7 @@ describe("applyHookEvent", () => {
 
 describe("describeTool", () => {
   test("file tools show the file name only", () => {
-    expect(describeTool("Edit", { file_path: "/Users/jr/claude-panel/agent/src/state.ts" })).toBe("Edit: state.ts");
+    expect(describeTool("Edit", { file_path: "/Users/dev/claude-panel/agent/src/state.ts" })).toBe("Edit: state.ts");
   });
 
   test("MCP tools show server and tool", () => {
