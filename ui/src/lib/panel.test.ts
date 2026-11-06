@@ -42,8 +42,15 @@ describe("layoutPages", () => {
     expect(pages.map((p) => p.attention)).toEqual([false, true]);
   });
 
-  test("no sessions, no pages", () => {
-    expect(layoutPages([])).toEqual([]);
+  test("the add tile takes the slot after the last session, on a new page if needed", () => {
+    expect(layoutPages([]).map((p) => [p.sessions.length, p.hasAdd])).toEqual([[0, true]]);
+    const seven = Array.from({ length: 7 }, () => session());
+    expect(layoutPages(seven, 8).map((p) => [p.sessions.length, p.hasAdd])).toEqual([[7, true]]);
+    const eight = Array.from({ length: 8 }, () => session());
+    expect(layoutPages(eight, 8).map((p) => [p.sessions.length, p.hasAdd])).toEqual([
+      [8, false],
+      [0, true],
+    ]);
   });
 });
 
@@ -73,6 +80,7 @@ describe("text", () => {
   test("statusLine", () => {
     expect(statusLine(session({ state: "working", activity: "Bash: npm test" }), NOW)).toBe("Bash: npm test");
     expect(statusLine(session({ state: "done", stateSince: NOW - 5 * 60_000 }), NOW)).toBe("done · 5m");
+    expect(statusLine(session({ state: "ended", live: false, stateSince: NOW - 2 * 3600_000 }), NOW)).toBe("closed · 2h");
     expect(statusLine(session({ state: "needs_permission", activity: "Claude needs your permission to use Bash" }), NOW)).toBe(
       "needs permission",
     );

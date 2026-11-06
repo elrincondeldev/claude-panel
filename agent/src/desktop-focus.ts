@@ -5,9 +5,9 @@
  */
 import { stat } from "node:fs/promises";
 import { homedir } from "node:os";
+import { cliSessionIdFor, DESKTOP_SESSIONS_DIR } from "./desktop-sessions.ts";
 
 const LOG = `${homedir()}/Library/Logs/Claude/main.log`;
-const SESSIONS_DIR = `${homedir()}/Library/Application Support/Claude/claude-code-sessions`;
 const FOCUS_LINE = /LocalSessions\.setFocusedSession: sessionId=(local_[A-Za-z0-9-]+|null)/g;
 
 // The app logs a null between two focused sessions; only a null that lasts means "nothing in front".
@@ -20,22 +20,13 @@ export function lastFocus(text: string): string | null | undefined {
   return last;
 }
 
-/** CLI session id of a desktop `local_…` session, read from the app's session metadata. */
-export async function cliSessionIdFor(localId: string, sessionsDir = SESSIONS_DIR): Promise<string | null> {
-  for await (const path of new Bun.Glob(`*/*/${localId}.json`).scan({ cwd: sessionsDir, absolute: true })) {
-    const meta = await Bun.file(path).json().catch(() => null);
-    if (typeof meta?.cliSessionId === "string") return meta.cliSessionId;
-  }
-  return null;
-}
-
 /**
  * Calls `onFocus` with the CLI session id in front in the desktop app, or null when none.
  * Survives log rotation. Returns a stop function.
  */
 export function watchDesktopFocus(
   onFocus: (sessionId: string | null) => void,
-  { log = LOG, sessionsDir = SESSIONS_DIR, pollMs = 1000 } = {},
+  { log = LOG, sessionsDir = DESKTOP_SESSIONS_DIR, pollMs = 1000 } = {},
 ) {
   let offset = 0;
   let partialLine = "";

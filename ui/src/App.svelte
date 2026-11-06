@@ -1,4 +1,6 @@
 <script lang="ts">
+  import AddTile from "./components/AddTile.svelte";
+  import LibrarySheet from "./components/LibrarySheet.svelte";
   import Notice from "./components/Notice.svelte";
   import PageBar from "./components/PageBar.svelte";
   import SessionSheet from "./components/SessionSheet.svelte";
@@ -10,6 +12,7 @@
   let configError = $state(false);
   let requestedPage = $state(0);
   let menuFor = $state<string | null>(null);
+  let libraryOpen = $state(false);
 
   loadPanelConfig().then(
     (config) => (link = new AgentLink(config)),
@@ -25,12 +28,8 @@
   {#if configError}
     <Notice title="Not paired" detail="run `bun run pair` in ui/" mood="error" />
   {:else if link}
-    {#if pages.length === 0}
-      <Notice
-        title={link.status === "online" ? "No sessions" : "Connecting"}
-        detail={link.status === "online" ? "start Claude Code on your Mac" : ""}
-        mood={link.status === "online" ? "idle" : "working"}
-      />
+    {#if link.status !== "online" && link.sessions.size === 0}
+      <Notice title="Connecting" mood="working" />
     {:else}
       <div class="grid">
         {#each pages[current]!.sessions as session (session.id)}
@@ -41,6 +40,9 @@
             onmenu={() => (menuFor = session.id)}
           />
         {/each}
+        {#if pages[current]!.hasAdd}
+          <AddTile onclick={() => (libraryOpen = true)} />
+        {/if}
       </div>
       <PageBar {pages} {current} onchange={(i) => (requestedPage = i)} />
     {/if}
@@ -61,6 +63,10 @@
         onpin={(pinned) => link!.send({ type: "pin", id, pinned })}
         onicon={(icon) => link!.send({ type: "icon", id, icon })}
       />
+    {/if}
+
+    {#if libraryOpen}
+      <LibrarySheet {link} onclose={() => (libraryOpen = false)} />
     {/if}
 
     {#if link.error}

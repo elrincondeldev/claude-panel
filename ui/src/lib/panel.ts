@@ -8,6 +8,8 @@ export interface Page {
   sessions: PanelSession[];
   /** Some session on this page is waiting for the user. */
   attention: boolean;
+  /** The page ends with the tile that pins more sessions. */
+  hasAdd: boolean;
 }
 
 export function needsAttention(s: PanelSession) {
@@ -15,8 +17,8 @@ export function needsAttention(s: PanelSession) {
 }
 
 /**
- * Pinned sessions by position, then the other live sessions by name. Ordering by
- * name rather than activity keeps tiles from jumping around as states change.
+ * Pinned sessions by position, then the other live sessions by name, then one slot for the
+ * add tile. Ordering by name rather than activity keeps tiles from jumping around as states change.
  */
 export function layoutPages(sessions: Iterable<PanelSession>, perPage = PER_PAGE): Page[] {
   const pinned: PanelSession[] = [];
@@ -30,9 +32,9 @@ export function layoutPages(sessions: Iterable<PanelSession>, perPage = PER_PAGE
 
   const ordered = [...pinned, ...others];
   const pages: Page[] = [];
-  for (let i = 0; i < ordered.length; i += perPage) {
+  for (let i = 0; i <= ordered.length; i += perPage) {
     const slice = ordered.slice(i, i + perPage);
-    pages.push({ sessions: slice, attention: slice.some(needsAttention) });
+    pages.push({ sessions: slice, attention: slice.some(needsAttention), hasAdd: i + perPage > ordered.length });
   }
   return pages;
 }
@@ -82,7 +84,8 @@ export function statusLine(s: PanelSession, now: number): string {
       return s.activity ? `error · ${s.activity}` : "error";
     case "idle":
     case "done":
-    case "ended":
       return `${s.state} · ${ago(s.stateSince, now)}`;
+    case "ended": // the process stopped; the session itself can be reopened
+      return `closed · ${ago(s.stateSince, now)}`;
   }
 }

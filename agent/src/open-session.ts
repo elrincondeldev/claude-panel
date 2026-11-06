@@ -1,22 +1,23 @@
 /**
  * Opens a session in the Claude desktop app.
- * - Live in the app: navigate with the undocumented `claude://code/continue?session=local_…`.
- *   The local id comes from ~/.claude/sessions/<pid>.json, an internal file that may change.
- * - Closed: `claude --desktop --resume <id>` (documented, CLI ≥ 2.1.285).
- * Resuming a live session would start a second process on the same conversation, so it is refused.
+ * - Known to the app (running or stopped while idle): navigate with the undocumented
+ *   `claude://code/continue?session=local_…`; the app restarts the session if needed.
+ * - Unknown to the app and closed: `claude --desktop --resume <id>` (documented, CLI ≥ 2.1.285).
+ * - Running in a terminal: refused, since resuming it would start a second process on the same conversation.
  */
 import { readdir } from "node:fs/promises";
 import { homedir } from "node:os";
+import { DESKTOP_SESSIONS_DIR, findDesktopSession } from "./desktop-sessions.ts";
 import { isSessionId } from "./protocol-guard.ts";
 
 const LOCAL_ID = /^local_[A-Za-z0-9-]{1,64}$/;
+const LIVE_DIR = `${homedir()}/.claude/sessions`;
 
 export type OpenResult = { ok: true; command: string[] } | { ok: false; error: string };
 
 interface LiveSession {
   pid: number;
   sessionId: string;
-  hostSessionId?: string;
   entrypoint?: string;
 }
 
@@ -29,6 +30,7 @@ function isAlive(pid: number) {
   }
 }
 
+/** A running Claude Code process for this session, from the CLI's internal ~/.claude/sessions/<pid>.json. */
 async function findLive(id: string, dir: string): Promise<LiveSession | undefined> {
   for (const name of await readdir(dir).catch(() => [])) {
     if (!name.endsWith(".json")) continue;
@@ -38,14 +40,19 @@ async function findLive(id: string, dir: string): Promise<LiveSession | undefine
 }
 
 /** Picks the command that would open the session, without running it. */
-export async function planOpen(sessionId: string, sessionsDir = `${homedir()}/.claude/sessions`): Promise<OpenResult> {
+export async function planOpen(
+  sessionId: string,
+  { liveDir = LIVE_DIR, desktopDir = DESKTOP_SESSIONS_DIR } = {},
+): Promise<OpenResult> {
   if (!isSessionId(sessionId)) return { ok: false, error: "invalid session id" };
-  const live = await findLive(sessionId, sessionsDir);
-  if (live && LOCAL_ID.test(live.hostSessionId ?? "")) {
-    return { ok: true, command: ["open", `claude://code/continue?session=${live.hostSessionId}`] };
+
+  const desktop = await findDesktopSession(sessionId, desktopDir);
+  if (desktop && LOCAL_ID.test(desktop.localId)) {
+    return { ok: true, command: ["open", `claude://code/continue?session=${desktop.localId}`] };
   }
+  const live = await findLive(sessionId, liveDir);
   if (live) {
-    return { ok: false, error: `live outside the desktop app (${live.entrypoint}, pid ${live.pid}): open it in its terminal` };
+    return { ok: false, error: `running outside the desktop app (${live.entrypoint}, pid ${live.pid}): open it in its terminal` };
   }
   return { ok: true, command: ["claude", "--desktop", "--resume", sessionId] };
 }

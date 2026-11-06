@@ -52,14 +52,27 @@ export interface PanelSession {
   icon: SessionIcon;
 }
 
+/** A desktop-app session the panel can pin, running or not. */
+export interface LibraryEntry {
+  id: string;
+  name: string;
+  cwd: string;
+  /** Epoch ms of its last activity. */
+  lastActivityAt: number;
+  pinned: boolean;
+}
+
 export type ServerMessage =
   | { type: "snapshot"; sessions: PanelSession[]; focusedId: string | null }
   | { type: "session"; session: PanelSession }
   | { type: "removed"; id: string }
   | { type: "focus"; id: string | null } // the session in front in the desktop app; null when none
+  | { type: "library"; sessions: LibraryEntry[] } // reply to a library request, most recent first
   | { type: "error"; message: string };
 
+/** `pin` and `icon` also accept a desktop session that isn't running: the agent starts tracking it. */
 export type ClientMessage =
   | { type: "open"; id: string }
   | { type: "pin"; id: string; pinned: boolean }
-  | { type: "icon"; id: string; icon: SessionIcon }; // pins the session if it isn't yet
+  | { type: "icon"; id: string; icon: SessionIcon } // pins the session if it isn't yet
+  | { type: "library" };

@@ -1,5 +1,5 @@
 import { SvelteMap } from "svelte/reactivity";
-import type { ClientMessage, PanelConfig, PanelSession, ServerMessage } from "../../../shared/protocol.ts";
+import type { ClientMessage, LibraryEntry, PanelConfig, PanelSession, ServerMessage } from "../../../shared/protocol.ts";
 
 export type LinkStatus = "connecting" | "online" | "offline";
 
@@ -27,6 +27,8 @@ export class AgentLink {
   status = $state<LinkStatus>("connecting");
   /** Latest error from the agent or from sending; clears itself after a few seconds. */
   error = $state<string | null>(null);
+  /** Desktop sessions that can be pinned, after requestLibrary(); null while loading. */
+  library = $state<LibraryEntry[] | null>(null);
 
   #config: PanelConfig;
   #ws: WebSocket | null = null;
@@ -46,12 +48,21 @@ export class AgentLink {
   send(message: ClientMessage) {
     if (this.#ws?.readyState !== WebSocket.OPEN) return this.#showError("Not connected to the Mac");
     this.#ws.send(JSON.stringify(message));
+    if (message.type === "library") return;
 
     if (message.type === "open") this.focusedId = message.id;
+    if (message.type === "pin" && this.library) {
+      this.library = this.library.map((e) => (e.id === message.id ? { ...e, pinned: message.pinned } : e));
+    }
     const session = this.sessions.get(message.id);
     if (!session) return;
     if (message.type === "pin") this.sessions.set(session.id, { ...session, pinned: message.pinned });
     if (message.type === "icon") this.sessions.set(session.id, { ...session, pinned: true, icon: message.icon });
+  }
+
+  requestLibrary() {
+    this.library = null;
+    this.send({ type: "library" });
   }
 
   #connect() {
@@ -86,6 +97,9 @@ export class AgentLink {
         break;
       case "focus":
         this.focusedId = msg.id;
+        break;
+      case "library":
+        this.library = msg.sessions;
         break;
       case "session":
         this.sessions.set(msg.session.id, msg.session);

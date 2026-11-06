@@ -28,7 +28,9 @@ export function parseClientMessage(raw: string): ClientMessage | null {
   } catch {
     return null;
   }
-  if (typeof msg !== "object" || msg === null || !isSessionId(msg.id)) return null;
+  if (typeof msg !== "object" || msg === null) return null;
+  if (msg.type === "library") return { type: "library" };
+  if (!isSessionId(msg.id)) return null;
 
   switch (msg.type) {
     case "open":

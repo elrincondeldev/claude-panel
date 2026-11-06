@@ -6,7 +6,8 @@ A small touchscreen on your desk that shows every Claude Code session running on
 
 - **Live state per session**: working (with the tool in use, e.g. `Bash: npm test`), waiting for permission, asking you something, compacting, done, error, ended.
 - **Tap to open** the session in the Claude desktop app. The session in front on the Mac is shown in solid orange.
-- **Long-press** to pin a session, pick its character (critter, robot, ghost, cat) and its color. Pinned sessions stay on the panel after they end.
+- **Long-press** to pin a session, pick its character (critter, robot, ghost, cat) and its color.
+- **Pin any desktop session** from the **+** tile, including ones whose process the app has stopped. Pinned sessions stay on the panel when they close; tap one and the app reopens it.
 - **Over WiFi.** The Pi only shows the panel; everything else runs on the Mac.
 
 ## How it works
@@ -89,7 +90,9 @@ Tools in `agent/`:
 | Hooks in `~/.claude/settings.json` | Instant state changes | Yes |
 | `claude agents --json` | Session names, who is alive, corrections for missed hooks | Yes |
 | `claude --desktop --resume <id>` | Opening a closed session | Yes |
-| `claude://code/continue?session=local_…` and `~/.claude/sessions/*.json` | Opening a session that is already live in the app | No |
+| `claude://code/continue?session=local_…` | Opening any session the desktop app knows, running or not | No |
+| `~/Library/Application Support/Claude/claude-code-sessions/*/*/local_*.json` | The app's sessions (title, folder, last activity) for the **+** list; mapping `local_…` ids to CLI ids | No |
+| `~/.claude/sessions/*.json` | Spotting sessions running in a terminal, which can't be opened in the app | No |
 | `setFocusedSession` lines in `~/Library/Logs/Claude/main.log` | Knowing which session is in front | No |
 
 The undocumented parts may break with a Claude update. If they do, the panel keeps working without that feature.

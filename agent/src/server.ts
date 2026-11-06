@@ -4,7 +4,9 @@
  * inject hook events.
  */
 import { timingSafeEqual } from "node:crypto";
-import type { ServerMessage } from "../../shared/protocol.ts";
+import { basename } from "node:path";
+import type { LibraryEntry, ServerMessage } from "../../shared/protocol.ts";
+import { listDesktopSessions, type DesktopSession } from "./desktop-sessions.ts";
 import type { SessionHub } from "./hub.ts";
 import { openSession, type OpenResult } from "./open-session.ts";
 import { parseClientMessage } from "./protocol-guard.ts";
@@ -16,13 +18,42 @@ export interface ServerOptions {
   hookPort: number;
   panelPort: number;
   panelHost?: string;
-  /** Replaceable so tests don't open real sessions. */
+  /** Replaceable so tests don't open real sessions or read the real desktop app. */
   open?: (id: string) => Promise<OpenResult>;
+  desktopSessions?: () => Promise<DesktopSession[]>;
 }
 
 const TOPIC = "panel";
+const LIBRARY_SIZE = 40;
 
-export function startServers({ hub, token, hookPort, panelPort, panelHost = "0.0.0.0", open = openSession }: ServerOptions) {
+export function startServers({
+  hub,
+  token,
+  hookPort,
+  panelPort,
+  panelHost = "0.0.0.0",
+  open = openSession,
+  desktopSessions = () => listDesktopSessions(),
+}: ServerOptions) {
+  async function library(): Promise<LibraryEntry[]> {
+    return (await desktopSessions())
+      .filter((s) => !s.archived)
+      .slice(0, LIBRARY_SIZE)
+      .map((s) => ({
+        id: s.sessionId,
+        name: s.title ?? hub.get(s.sessionId)?.name ?? basename(s.cwd),
+        cwd: s.cwd,
+        lastActivityAt: s.lastActivityAt,
+        pinned: hub.get(s.sessionId)?.pinned ?? false,
+      }));
+  }
+
+  /** Lets the panel pin a desktop session whose process isn't running, so the agent never saw it. */
+  async function adoptFromDesktop(id: string) {
+    const session = (await desktopSessions()).find((s) => s.sessionId === id);
+    if (session) hub.adopt(session.sessionId, session.title, session.cwd, session.lastActivityAt);
+  }
+
   const hookServer = Bun.serve({
     hostname: "127.0.0.1",
     port: hookPort,
@@ -59,6 +90,8 @@ export function startServers({ hub, token, hookPort, panelPort, panelHost = "0.0
       async message(ws, raw) {
         const msg = parseClientMessage(String(raw));
         if (!msg) return send(ws, { type: "error", message: "invalid message" });
+        if (msg.type === "library") return send(ws, { type: "library", sessions: await library() });
+        if (!hub.has(msg.id) && msg.type !== "open") await adoptFromDesktop(msg.id);
         if (!hub.has(msg.id)) return send(ws, { type: "error", message: "unknown session" });
 
         switch (msg.type) {

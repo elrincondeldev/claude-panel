@@ -58,6 +58,12 @@ export class SessionHub {
     for (const rec of reconcile(this.records, agents, this.now())) this.commit(rec);
   }
 
+  /** Starts tracking a session that is not running, e.g. a desktop session about to be pinned. No-op if known. */
+  adopt(id: string, name: string | null, cwd: string, since: number) {
+    if (this.records.has(id)) return;
+    this.commit({ id, name, cwd, state: "ended", activity: null, live: false, pid: null, stateSince: since, lastEventAt: 0 });
+  }
+
   /** False if the session is unknown. */
   setPinned(id: string, pinned: boolean): boolean {
     const rec = this.records.get(id);

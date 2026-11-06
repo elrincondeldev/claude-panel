@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 import { appendFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { cliSessionIdFor, lastFocus, watchDesktopFocus } from "./desktop-focus.ts";
+import { lastFocus, watchDesktopFocus } from "./desktop-focus.ts";
+import { cliSessionIdFor, findDesktopSession, listDesktopSessions } from "./desktop-sessions.ts";
 
 const LOCAL_A = "local_52223c18-ba45-4a92-9290-45eb61d71d5d";
 const LOCAL_B = "local_e810f230-1637-4569-a5aa-7021561c21b3";
@@ -18,9 +19,12 @@ beforeEach(() => {
   log = `${dir}/main.log`;
   sessionsDir = `${dir}/sessions`;
   mkdirSync(`${sessionsDir}/account/org`, { recursive: true });
-  for (const [local, cli] of [[LOCAL_A, CLI_A], [LOCAL_B, CLI_B]]) {
-    writeFileSync(`${sessionsDir}/account/org/${local}.json`, JSON.stringify({ sessionId: local, cliSessionId: cli }));
-  }
+  const sessions = [
+    { sessionId: LOCAL_A, cliSessionId: CLI_A, title: "Panel", cwd: "/Users/dev/panel", lastActivityAt: 2000 },
+    { sessionId: LOCAL_B, cliSessionId: CLI_B, title: "Infra", cwd: "/Users/dev/infra", lastActivityAt: 3000, isArchived: true },
+  ];
+  for (const s of sessions) writeFileSync(`${sessionsDir}/account/org/${s.sessionId}.json`, JSON.stringify(s));
+  writeFileSync(`${sessionsDir}/account/org/local_broken.json`, "{ not json");
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
@@ -40,9 +44,20 @@ describe("lastFocus", () => {
   });
 });
 
-test("cliSessionIdFor maps desktop ids through the app's session metadata", async () => {
-  expect(await cliSessionIdFor(LOCAL_A, sessionsDir)).toBe(CLI_A);
-  expect(await cliSessionIdFor("local_unknown", sessionsDir)).toBeNull();
+describe("desktop sessions", () => {
+  test("cliSessionIdFor maps desktop ids through the app's session metadata", async () => {
+    expect(await cliSessionIdFor(LOCAL_A, sessionsDir)).toBe(CLI_A);
+    expect(await cliSessionIdFor("local_unknown", sessionsDir)).toBeNull();
+  });
+
+  test("listDesktopSessions reads every valid file, most recent first", async () => {
+    const sessions = await listDesktopSessions(sessionsDir);
+    expect(sessions.map((s) => [s.localId, s.sessionId, s.archived])).toEqual([
+      [LOCAL_B, CLI_B, true],
+      [LOCAL_A, CLI_A, false],
+    ]);
+    expect(await findDesktopSession(CLI_A, sessionsDir)).toMatchObject({ title: "Panel", cwd: "/Users/dev/panel" });
+  });
 });
 
 test("watchDesktopFocus follows switches, skips the transient null and survives rotation", async () => {

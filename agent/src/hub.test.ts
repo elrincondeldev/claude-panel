@@ -70,6 +70,16 @@ describe("SessionHub", () => {
     expect(hub.get(A)).toMatchObject({ pinned: true, position: 0, icon: { character: "ghost" } });
   });
 
+  test("adopting a session that isn't running tracks it as closed, and the poll revives it", () => {
+    const { hub } = setup();
+    hub.adopt(A, "Idle work", "/Users/dev/idle", 5000);
+    hub.adopt(A, "ignored", "/ignored", 0);
+    expect(hub.get(A)).toMatchObject({ name: "Idle work", live: false, state: "ended", stateSince: 5000 });
+
+    hub.handleAgents([{ sessionId: A, name: "Idle work", cwd: "/Users/dev/idle", status: "idle", startedAt: 0 }]);
+    expect(hub.get(A)).toMatchObject({ live: true, state: "idle" });
+  });
+
   test("focus is announced once per change", () => {
     const { hub, changes } = setup();
     hub.setFocused(A);
@@ -122,6 +132,7 @@ describe("SessionHub", () => {
 
 describe("parseClientMessage", () => {
   test("accepts the whitelisted commands", () => {
+    expect(parseClientMessage(JSON.stringify({ type: "library" }))).toEqual({ type: "library" });
     expect(parseClientMessage(JSON.stringify({ type: "open", id: A }))).toEqual({ type: "open", id: A });
     expect(parseClientMessage(JSON.stringify({ type: "pin", id: A, pinned: true }))).toEqual({ type: "pin", id: A, pinned: true });
     expect(parseClientMessage(JSON.stringify({ type: "icon", id: A, icon: { character: "crab", color: "#FF6A1A" } }))).toEqual({
